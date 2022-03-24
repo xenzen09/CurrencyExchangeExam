@@ -17,9 +17,7 @@ class CurrencyController extends Controller
     public function index()
     {
         $currencies = Currency::select('name','code')->get();
-        return response([
-            'data' => CurrencyResource::collection($currencies)
-        ], 200);
+        return response(CurrencyResource::collection($currencies), 200);
     }
 
     /**
