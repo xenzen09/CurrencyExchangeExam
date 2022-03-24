@@ -3,22 +3,37 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
 use App\Models\User;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Validator;
 
 class AuthController extends Controller
 {
     public function register(Request $request) {
-    	$registerData = $request->validate([
-    		'name' => 'required|max:255',
-    		'email' => 'required|unique:users',
-    		'password' => 'required|confirmed',
-    	]);
-    	$registerData['password'] = Hash::make($request->password);
-    	$user = User::create($registerData);
-    	$accessToken = $user->createToken('authToken')->accessToken;
-    	return response(['user' => $user, 'access_token' => $accessToken], 201);
+
+        try {
+            DB::beginTransaction();
+            $validator = Validator::make($request->all(), [
+                 'name' => 'required|max:255',
+                 'email' => 'required|unique:users',
+                 'password' => 'required|confirmed',
+              ]);
+            if ($validator->fails()) {
+                return response()->json(['error' => $validator->errors()]);
+            }
+        	$registerData = $request->only(['name','email']);
+        	$registerData['password'] = Hash::make($request->password);
+            $user = User::create($registerData);
+            $accessToken = $user->createToken('authToken')->accessToken;
+            $output = ['user' => $user, 'access_token' => $accessToken];
+            DB::commit();
+        } catch (\Exception $e) {
+            $output = ['msg' => $e->getMessage()];
+            DB::rollBack();
+        }
+        return response()->json($output);
     }
 
 
